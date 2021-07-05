@@ -58,7 +58,7 @@ Here is rule of thumb:
 watchman.Submit(fmt.Sprintf("users.%s.count", group.Name), group.UserCount())
 
 //
-// GOOD, don't do this.
+// GOOD, do this.
 //
 // Tags are a cheap and won't cause problems in the database. Use tags for
 // variable data.
