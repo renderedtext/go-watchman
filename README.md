@@ -9,7 +9,7 @@ To install and configure watchman, use the following snippet:
 ``` golang
 package main
 
-import "github.com/renderedtext/watchman"
+import "github.com/renderedtext/go-watchman"
 
 func main() {
   statdHost := "0.0.0.0"
