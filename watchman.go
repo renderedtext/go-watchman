@@ -69,6 +69,14 @@ func BenchmarkWithTags(start time.Time, name string, tags []string) error {
 	return defaultClient.BenchmarkWithTags(start, name, tags)
 }
 
+func Increment(name string) error {
+	return IncrementWithTags(name, []string{})
+}
+
+func IncrementWithTags(name string, tags []string) error {
+	return defaultClient.IncrementWithTags(name, tags)
+}
+
 func Submit(name string, value int) error {
 	return SubmitWithTags(name, []string{}, value)
 }
@@ -129,6 +137,22 @@ func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string) 
 	}
 
 	c.statsdClient.Timing(name, int(elapsed/1000))
+
+	return nil
+}
+
+func (c *Client) IncrementWithTags(name string, tags []string) error {
+	name, err := c.FormatMetricNameWithTags(name, tags)
+	if err != nil {
+		log.Printf("Failed to submit metric: %+v", err)
+		return err
+	}
+
+	if !c.configured {
+		return fmt.Errorf("Not configured")
+	}
+
+	c.statsdClient.Increment(name)
 
 	return nil
 }
