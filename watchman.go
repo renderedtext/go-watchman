@@ -77,6 +77,14 @@ func IncrementWithTags(name string, tags []string) error {
 	return defaultClient.IncrementWithTags(name, tags)
 }
 
+func IncrementBy(name string, value int) error {
+	return IncrementByWithTags(name, value, []string{})
+}
+
+func IncrementByWithTags(name string, value int, tags []string) error {
+	return defaultClient.IncrementByWithTags(name, value, tags)
+}
+
 func Submit(name string, value int) error {
 	return SubmitWithTags(name, []string{}, value)
 }
@@ -157,9 +165,23 @@ func (c *Client) IncrementWithTags(name string, tags []string) error {
 	return nil
 }
 
-func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
-	log.Printf("Sending watchman metrics %s: %d", name, value)
+func (c *Client) IncrementByWithTags(name string, value int, tags []string) error {
+	name, err := c.FormatMetricNameWithTags(name, tags)
+	if err != nil {
+		log.Printf("Failed to submit metric: %+v", err)
+		return err
+	}
 
+	if !c.configured {
+		return fmt.Errorf("Not configured")
+	}
+
+	c.statsdClient.Count(name, value)
+
+	return nil
+}
+
+func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
 	name, err := c.FormatMetricNameWithTags(name, tags)
 
 	if err != nil {
