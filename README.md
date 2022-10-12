@@ -25,6 +25,41 @@ func main() {
 }
 ```
 
+### Optional filtering
+If you need to filter your metrics based on some runtime enviorment variable, 
+you can use the following snipet:
+``` golang
+package main
+
+import "github.com/renderedtext/go-watchman"
+
+func main() {
+  statdHost := "0.0.0.0"
+  statdPort := 8125
+
+  // by convention, this is <service-name>.<environment>
+  metricNamespace := "example-service.prod"
+
+  doFilter := strconv.ParseBool(os.Getenv("DO_FILTER"))
+
+  err := watchman.ConfigureWithOptions(watchman.Options{
+		Host:                  statsdHost,
+		Port:                  statsdPort,
+    MetricPrefix:          metricNamespace,
+    OnlyExternal:          true,
+		ConnectionAttempts:    5,
+		ConnectionAttemptWait: 2 * time.Second,
+	})
+  if err != nil {
+    panic(err)
+  }
+}
+```
+if this flag ```OnlyExternal``` is set to true, for metrics to be passed through you ***must*** also 
+pass ```true``` with every call to watchman. Eg.
+```golang
+watchman.Submit("user.count", 12, true)
+```
 ## Submitting gauges
 
 To submit a simple gauge value use `watchman.Submit`. For example, if you want

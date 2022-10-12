@@ -13,6 +13,7 @@ import (
 type Client struct {
 	statsdClient *statsd.Client
 	metricPrefix string
+	onlyExternal bool
 	configured   bool
 }
 
@@ -22,6 +23,7 @@ type Options struct {
 	Host                  string
 	Port                  string
 	MetricPrefix          string
+	OnlyExternal          bool
 	ConnectionAttempts    int
 	ConnectionAttemptWait time.Duration
 }
@@ -37,7 +39,7 @@ func Configure(host string, port string, metricPrefix string) error {
 }
 
 func ConfigureWithOptions(options Options) error {
-	defaultClient.metricPrefix = options.MetricPrefix
+	defaultClient.onlyExternal = options.OnlyExternal
 
 	address := statsd.Address(fmt.Sprintf("%s:%s", options.Host, options.Port))
 
@@ -61,39 +63,39 @@ func ConfigureWithOptions(options Options) error {
 	return nil
 }
 
-func Benchmark(start time.Time, name string) error {
-	return BenchmarkWithTags(start, name, []string{})
+func Benchmark(start time.Time, name string, external ...bool) error {
+	return BenchmarkWithTags(start, name, []string{}, external)
 }
 
-func BenchmarkWithTags(start time.Time, name string, tags []string) error {
-	return defaultClient.BenchmarkWithTags(start, name, tags)
+func BenchmarkWithTags(start time.Time, name string, tags []string, external ...bool) error {
+	return defaultClient.BenchmarkWithTags(start, name, tags, external)
 }
 
-func Increment(name string) error {
-	return IncrementWithTags(name, []string{})
+func Increment(name string, external ...bool) error {
+	return IncrementWithTags(name, []string{}, external)
 }
 
-func IncrementWithTags(name string, tags []string) error {
+func IncrementWithTags(name string, tags []string, external ...bool) error {
 	return defaultClient.IncrementWithTags(name, tags)
 }
 
-func IncrementBy(name string, value int) error {
+func IncrementBy(name string, value int, external ..bool) error {
 	return IncrementByWithTags(name, value, []string{})
 }
 
-func IncrementByWithTags(name string, value int, tags []string) error {
+func IncrementByWithTags(name string, value int, tags []string, external ...bool) error {
 	return defaultClient.IncrementByWithTags(name, value, tags)
 }
 
-func Submit(name string, value int) error {
+func Submit(name string, value int, external ...bool) error {
 	return SubmitWithTags(name, []string{}, value)
 }
 
-func SubmitWithTags(name string, tags []string, value int) error {
+func SubmitWithTags(name string, tags []string, value int, external ...bool) error {
 	return defaultClient.SubmitWithTags(name, tags, value)
 }
 
-func TimingWithTags(name string, tags []string, value int64) error {
+func TimingWithTags(name string, tags []string, value int64, external ...bool) error {
 	return defaultClient.TimingWithTags(name, tags, value)
 }
 
@@ -113,7 +115,11 @@ func retryWithConstantWait(task string, maxAttempts int, wait time.Duration, f f
 	}
 }
 
-func (c *Client) TimingWithTags(name string, tags []string, value int64) error {
+func (c *Client) TimingWithTags(name string, tags []string, value int64, external ...bool) error {
+	if c.onlyExternal && (len(external) == 0 || (len(external) > 0 && !external[0])) {
+		return nil
+	}
+
 	name, err := c.FormatMetricNameWithTags(name, tags)
 
 	if err != nil {
@@ -130,7 +136,11 @@ func (c *Client) TimingWithTags(name string, tags []string, value int64) error {
 	return nil
 }
 
-func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string) error {
+func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string, external ...bool) error {
+	if c.onlyExternal && (len(external) == 0 || (len(external) > 0 && !external[0])) {
+		return nil
+	}
+
 	name, err := c.FormatMetricNameWithTags(name, tags)
 
 	if err != nil {
@@ -149,7 +159,11 @@ func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string) 
 	return nil
 }
 
-func (c *Client) IncrementWithTags(name string, tags []string) error {
+func (c *Client) IncrementWithTags(name string, tags []string, external ...bool) error {
+	if c.onlyExternal && (len(external) == 0 || (len(external) > 0 && !external[0])) {
+		return nil
+	}
+
 	name, err := c.FormatMetricNameWithTags(name, tags)
 	if err != nil {
 		log.Printf("Failed to submit metric: %+v", err)
@@ -165,7 +179,11 @@ func (c *Client) IncrementWithTags(name string, tags []string) error {
 	return nil
 }
 
-func (c *Client) IncrementByWithTags(name string, value int, tags []string) error {
+func (c *Client) IncrementByWithTags(name string, value int, tags []string, external ...bool) error {
+	if c.onlyExternal && (len(external) == 0 || (len(external) > 0 && !external[0])) {
+		return nil
+	}
+
 	name, err := c.FormatMetricNameWithTags(name, tags)
 	if err != nil {
 		log.Printf("Failed to submit metric: %+v", err)
@@ -181,7 +199,11 @@ func (c *Client) IncrementByWithTags(name string, value int, tags []string) erro
 	return nil
 }
 
-func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
+func (c *Client) SubmitWithTags(name string, tags []string, value int, external ...bool) error {
+	if c.onlyExternal && (len(external) == 0 || (len(external) > 0 && !external[0])) {
+		return nil
+	}
+
 	name, err := c.FormatMetricNameWithTags(name, tags)
 
 	if err != nil {
