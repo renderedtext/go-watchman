@@ -24,8 +24,8 @@ type Client struct {
 	configured   bool
 }
 
-var defaultClient ClientI
-var externalClient externalClientConvinience
+var defaultClient ClientI = &Client{}
+var externalClient externalClientConvinience = externalClientConvinience{&Client{}}
 
 type Options struct {
 	Host                  string
