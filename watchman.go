@@ -10,18 +10,28 @@ import (
 	statsd "gopkg.in/alexcesaro/statsd.v2"
 )
 
+type ClientI interface {
+	TimingWithTags(name string, tags []string, value int64) error
+	BenchmarkWithTags(start time.Time, name string, tags []string) error
+	IncrementWithTags(name string, tags []string) error
+	IncrementByWithTags(name string, value int, tags []string) error
+	SubmitWithTags(name string, tags []string, value int) error
+}
+
 type Client struct {
 	statsdClient *statsd.Client
 	metricPrefix string
 	configured   bool
 }
 
-var defaultClient Client
+var defaultClient ClientI
+var externalClient externalClientConvinience
 
 type Options struct {
 	Host                  string
 	Port                  string
 	MetricPrefix          string
+	ExternalOnly          bool
 	ConnectionAttempts    int
 	ConnectionAttemptWait time.Duration
 }
@@ -37,17 +47,18 @@ func Configure(host string, port string, metricPrefix string) error {
 }
 
 func ConfigureWithOptions(options Options) error {
-	defaultClient.metricPrefix = options.MetricPrefix
+	c := Client{}
+	c.metricPrefix = options.MetricPrefix
 
 	address := statsd.Address(fmt.Sprintf("%s:%s", options.Host, options.Port))
 
 	err := retryWithConstantWait("statsd connection", options.ConnectionAttempts, options.ConnectionAttemptWait, func() error {
-		c, err := statsd.New(address)
+		s, err := statsd.New(address)
 		if err != nil {
 			return err
 		}
 
-		defaultClient.statsdClient = c
+		c.statsdClient = s
 		return nil
 	})
 
@@ -56,9 +67,21 @@ func ConfigureWithOptions(options Options) error {
 		return err
 	}
 
-	defaultClient.configured = true
+	c.configured = true
+
+	if options.ExternalOnly {
+		defaultClient = noopClient{}
+		externalClient = externalClientConvinience{&c}
+	} else {
+		defaultClient = &c
+		externalClient = externalClientConvinience{&c}
+	}
 
 	return nil
+}
+
+func External() externalClientConvinience {
+	return externalClient
 }
 
 func Benchmark(start time.Time, name string) error {
