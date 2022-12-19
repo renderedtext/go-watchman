@@ -41,7 +41,7 @@ func main() {
 		Host:                  statsdHost,
 		Port:                  statsdPort,
     MetricPrefix:          metricNamespace,
-    ExternalOnly:          true,
+    MetricsChannel:        watchman.InternalOnly,
 		ConnectionAttempts:    5,
 		ConnectionAttemptWait: 2 * time.Second,
 	})
@@ -50,11 +50,23 @@ func main() {
   }
 }
 ```
-if this flag ```OnlyExternal``` is set to true, for metrics to be passed through you ***must*** also 
-pass use external client. Eg.
+This flag ```MetricsChannel``` can be set to one of the following `InternalOnly`, `ExternalOnly` or `All`
+If you want `ExternalOnly` metrics to be passed through you ***must*** 
+use external client. Eg.
 ```golang
 watchman.External().Submit("user.count", 12)
 ```
+
+### Metrics Backends
+Metrics backend can be set with `BackendType` option, default is `BackendGraphite` and it will send metrics in the form:
+```
+tagged.{metricPrefix}.{[tags]}.metricName
+```
+the other available option is `BackendCloudwatch` that taggs metrics in `Datadog` style:
+```
+{metricPrefix}.{name}|{metricType}|#{[tags]}
+```
+with `BackendCloudwatch` option set you **must** send metrics in key-value pairs, if there is uneven number of elements in tags array library will panic.
 
 ## Submitting gauges
 

@@ -175,7 +175,7 @@ func (c *Client) TimingWithTags(name string, tags []string, value int64) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.timing(name, tags, value)
+	c.setTags(tags).Timing(name, value)
 
 	return nil
 }
@@ -194,23 +194,9 @@ func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string) 
 		return fmt.Errorf("Not configured")
 	}
 
-	c.timing(name, tags, int(elapsed/1000))
+	c.setTags(tags).Timing(name, int(elapsed/1000))
 
 	return nil
-}
-
-func (c *Client) timing(name string, tags []string, value interface{}) {
-	switch c.backend {
-	case BackendGraphite:
-		c.statsdClient.Timing(name, value)
-		return
-	case BackendCloudwatch:
-		c.getAwsCli(tags).Timing(name, value)
-		return
-	default:
-		c.statsdClient.Timing(name, value)
-		return
-	}
 }
 
 func (c *Client) IncrementWithTags(name string, tags []string) error {
@@ -224,26 +210,9 @@ func (c *Client) IncrementWithTags(name string, tags []string) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.increment(name, tags)
+	c.setTags(tags).Increment(name)
 
 	return nil
-}
-
-func (c *Client) increment(name string, tags []string) {
-	switch c.backend {
-	case BackendGraphite:
-		c.statsdClient.Increment(name)
-		return
-	case BackendCloudwatch:
-		cl := c.getAwsCli(tags)
-		fmt.Printf("kliejnt: %+v", cl)
-		fmt.Printf("tagovi bi trebali bit: %v\n\n", tags)
-		cl.Increment(name)
-		return
-	default:
-		c.statsdClient.Increment(name)
-		return
-	}
 }
 
 func (c *Client) IncrementByWithTags(name string, value int, tags []string) error {
@@ -257,23 +226,9 @@ func (c *Client) IncrementByWithTags(name string, value int, tags []string) erro
 		return fmt.Errorf("Not configured")
 	}
 
-	c.count(name, tags, value)
+	c.setTags(tags).Count(name, value)
 
 	return nil
-}
-
-func (c *Client) count(name string, tags []string, value int) {
-	switch c.backend {
-	case BackendGraphite:
-		c.statsdClient.Count(name, value)
-		return
-	case BackendCloudwatch:
-		c.getAwsCli(tags).Count(name, value)
-		return
-	default:
-		c.statsdClient.Count(name, value)
-		return
-	}
 }
 
 func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
@@ -288,23 +243,9 @@ func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.gauge(name, tags, value)
+	c.setTags(tags).Gauge(name, value)
 
 	return nil
-}
-
-func (c *Client) gauge(name string, tags []string, value int) {
-	switch c.backend {
-	case BackendGraphite:
-		c.statsdClient.Gauge(name, value)
-		return
-	case BackendCloudwatch:
-		c.getAwsCli(tags).Gauge(name, value)
-		return
-	default:
-		c.statsdClient.Gauge(name, value)
-		return
-	}
 }
 
 var invalidTagCharactersRegex = regexp.MustCompile("[^a-zA-Z0-9-_]+")
@@ -345,7 +286,6 @@ func (c *Client) formatMetricsNameWithoutTags(name string) (string, error) {
 	return metric, nil
 }
 
-func (c *Client) getAwsCli(tags []string) *statsd.Client {
-	return c.statsdClient.Clone(statsd.TagsFormat(statsd.Datadog),
-		statsd.Tags(tags...))
+func (c *Client) setTags(tags []string) *statsd.Client {
+	return c.statsdClient.Clone(statsd.Tags(tags...))
 }
