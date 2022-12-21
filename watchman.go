@@ -20,6 +20,7 @@ type ClientI interface {
 
 type Client struct {
 	statsdClient *statsd.Client
+	backend      BackendType
 	metricPrefix string
 	configured   bool
 }
@@ -27,11 +28,27 @@ type Client struct {
 var defaultClient ClientI = &Client{}
 var externalClient externalClientConvinience = externalClientConvinience{&Client{}}
 
+type MetricsChannel uint8
+
+const (
+	InternalOnly = iota
+	ExternalOnly
+	All
+)
+
+type BackendType uint8
+
+const (
+	BackendGraphite = iota
+	BackendCloudwatch
+)
+
 type Options struct {
 	Host                  string
 	Port                  string
 	MetricPrefix          string
-	ExternalOnly          bool
+	MetricsChannel        MetricsChannel
+	BackendType           BackendType
 	ConnectionAttempts    int
 	ConnectionAttemptWait time.Duration
 }
@@ -50,10 +67,14 @@ func ConfigureWithOptions(options Options) error {
 	c := Client{}
 	c.metricPrefix = options.MetricPrefix
 
-	address := statsd.Address(fmt.Sprintf("%s:%s", options.Host, options.Port))
+	var statsdOpts = []statsd.Option{statsd.Address(fmt.Sprintf("%s:%s", options.Host, options.Port))}
+
+	if options.BackendType == BackendCloudwatch {
+		statsdOpts = append(statsdOpts, statsd.TagsFormat(statsd.Datadog))
+	}
 
 	err := retryWithConstantWait("statsd connection", options.ConnectionAttempts, options.ConnectionAttemptWait, func() error {
-		s, err := statsd.New(address)
+		s, err := statsd.New(statsdOpts...)
 		if err != nil {
 			return err
 		}
@@ -69,13 +90,19 @@ func ConfigureWithOptions(options Options) error {
 
 	c.configured = true
 
-	if options.ExternalOnly {
+	switch options.MetricsChannel {
+	case InternalOnly:
+		defaultClient = &c
+		externalClient = externalClientConvinience{noopClient{}}
+	case ExternalOnly:
 		defaultClient = noopClient{}
 		externalClient = externalClientConvinience{&c}
-	} else {
+	default:
 		defaultClient = &c
 		externalClient = externalClientConvinience{&c}
 	}
+
+	c.backend = options.BackendType
 
 	return nil
 }
@@ -148,7 +175,7 @@ func (c *Client) TimingWithTags(name string, tags []string, value int64) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.statsdClient.Timing(name, value)
+	c.setTags(tags).Timing(name, value)
 
 	return nil
 }
@@ -167,7 +194,7 @@ func (c *Client) BenchmarkWithTags(start time.Time, name string, tags []string) 
 		return fmt.Errorf("Not configured")
 	}
 
-	c.statsdClient.Timing(name, int(elapsed/1000))
+	c.setTags(tags).Timing(name, int(elapsed/1000))
 
 	return nil
 }
@@ -183,7 +210,7 @@ func (c *Client) IncrementWithTags(name string, tags []string) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.statsdClient.Increment(name)
+	c.setTags(tags).Increment(name)
 
 	return nil
 }
@@ -199,7 +226,7 @@ func (c *Client) IncrementByWithTags(name string, value int, tags []string) erro
 		return fmt.Errorf("Not configured")
 	}
 
-	c.statsdClient.Count(name, value)
+	c.setTags(tags).Count(name, value)
 
 	return nil
 }
@@ -216,7 +243,7 @@ func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
 		return fmt.Errorf("Not configured")
 	}
 
-	c.statsdClient.Gauge(name, value)
+	c.setTags(tags).Gauge(name, value)
 
 	return nil
 }
@@ -224,6 +251,17 @@ func (c *Client) SubmitWithTags(name string, tags []string, value int) error {
 var invalidTagCharactersRegex = regexp.MustCompile("[^a-zA-Z0-9-_]+")
 
 func (c *Client) FormatMetricNameWithTags(name string, tags []string) (string, error) {
+	switch c.backend {
+	case BackendGraphite:
+		return c.formatMetricNameWithTags(name, tags)
+	case BackendCloudwatch:
+		return c.formatMetricsNameWithoutTags(name)
+	default:
+		return c.formatMetricNameWithTags(name, tags)
+	}
+}
+
+func (c *Client) formatMetricNameWithTags(name string, tags []string) (string, error) {
 	if len(tags) > 3 {
 		return "", fmt.Errorf("too many tags in watchman metric")
 	}
@@ -241,4 +279,13 @@ func (c *Client) FormatMetricNameWithTags(name string, tags []string) (string, e
 	metric := fmt.Sprintf("tagged.%s.%s.%s", c.metricPrefix, strings.Join(cleanedTags, "."), name)
 
 	return metric, nil
+}
+
+func (c *Client) formatMetricsNameWithoutTags(name string) (string, error) {
+	metric := fmt.Sprintf("%s.%s", c.metricPrefix, name)
+	return metric, nil
+}
+
+func (c *Client) setTags(tags []string) *statsd.Client {
+	return c.statsdClient.Clone(statsd.Tags(tags...))
 }
