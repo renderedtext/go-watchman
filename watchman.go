@@ -287,5 +287,9 @@ func (c *Client) formatMetricsNameWithoutTags(name string) (string, error) {
 }
 
 func (c *Client) setTags(tags []string) *statsd.Client {
-	return c.statsdClient.Clone(statsd.Tags(tags...))
+	if c.backend == BackendCloudwatch {
+		return c.statsdClient.Clone(statsd.Tags(tags...))
+	} else {
+		return c.statsdClient
+	}
 }
