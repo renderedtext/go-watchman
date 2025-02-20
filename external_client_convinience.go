@@ -2,22 +2,22 @@ package watchman
 
 import "time"
 
-type externalClientConvinience struct {
+type externalClientConvenience struct {
 	ClientI
 }
 
-func (e externalClientConvinience) Benchmark(start time.Time, name string) error {
+func (e externalClientConvenience) Benchmark(start time.Time, name string) error {
 	return e.BenchmarkWithTags(start, name, []string{})
 }
 
-func (e externalClientConvinience) Increment(name string) error {
+func (e externalClientConvenience) Increment(name string) error {
 	return e.IncrementWithTags(name, []string{})
 }
 
-func (e externalClientConvinience) IncrementBy(name string, value int) error {
+func (e externalClientConvenience) IncrementBy(name string, value int) error {
 	return e.IncrementByWithTags(name, value, []string{})
 }
 
-func (e externalClientConvinience) Submit(name string, value int) error {
+func (e externalClientConvenience) Submit(name string, value int) error {
 	return e.SubmitWithTags(name, []string{}, value)
 }

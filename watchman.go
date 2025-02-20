@@ -26,7 +26,7 @@ type Client struct {
 }
 
 var defaultClient ClientI = &Client{}
-var externalClient externalClientConvinience = externalClientConvinience{&Client{}}
+var externalClient externalClientConvenience = externalClientConvenience{&Client{}}
 
 type MetricsChannel uint8
 
@@ -93,13 +93,13 @@ func ConfigureWithOptions(options Options) error {
 	switch options.MetricsChannel {
 	case InternalOnly:
 		defaultClient = &c
-		externalClient = externalClientConvinience{noopClient{}}
+		externalClient = externalClientConvenience{noopClient{}}
 	case ExternalOnly:
 		defaultClient = noopClient{}
-		externalClient = externalClientConvinience{&c}
+		externalClient = externalClientConvenience{&c}
 	default:
 		defaultClient = &c
-		externalClient = externalClientConvinience{&c}
+		externalClient = externalClientConvenience{&c}
 	}
 
 	c.backend = options.BackendType
@@ -107,7 +107,7 @@ func ConfigureWithOptions(options Options) error {
 	return nil
 }
 
-func External() externalClientConvinience {
+func External() externalClientConvenience {
 	return externalClient
 }
 
