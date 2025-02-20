@@ -12,13 +12,13 @@ package main
 import "github.com/renderedtext/go-watchman"
 
 func main() {
-  statdHost := "0.0.0.0"
+  statsdHost := "0.0.0.0"
   statdPort := 8125
 
   // by convention, this is <service-name>.<environment>
   metricNamespace := "example-service.prod"
 
-  err := watchman.Configure(statdHost, statdPort, metricNamespace)
+  err := watchman.Configure(statsdHost, statdPort, metricNamespace)
   if err != nil {
     panic(err)
   }
@@ -26,13 +26,13 @@ func main() {
 ```
 
 ### Optional filtering
-If you need to filter your metrics based on some runtime enviorment variable, 
-you can use the following snipet:
+If you need to filter your metrics based on some runtime environment variable, 
+you can use the following snippet:
 ``` golang
 package main
 import "github.com/renderedtext/go-watchman"
 func main() {
-  statdHost := "0.0.0.0"
+  statsdHost := "0.0.0.0"
   statdPort := 8125
   // by convention, this is <service-name>.<environment>
   metricNamespace := "example-service.prod"
@@ -52,7 +52,7 @@ func main() {
 ```
 This flag ```MetricsChannel``` can be set to one of the following `InternalOnly`, `ExternalOnly` or `All`
 If you want `ExternalOnly` metrics to be passed through you ***must*** 
-use external client. Eg.
+use external client. e.g.
 ```golang
 watchman.External().Submit("user.count", 12)
 ```
@@ -62,7 +62,7 @@ Metrics backend can be set with `BackendType` option, default is `BackendGraphit
 ```
 tagged.{metricPrefix}.{[tags]}.metricName
 ```
-the other available option is `BackendCloudwatch` that taggs metrics in `Datadog` style:
+the other available option is `BackendCloudwatch` that tags metrics in `Datadog's` style:
 ```
 {metricPrefix}.{name}|{metricType}|#{[tags]}
 ```
@@ -155,3 +155,7 @@ watchman.Increment("profile-page.visits")
 watchman.IncrementBy("users.added", len(users))
 watchman.IncrementByWithTags("users.added.to.group", []string{group.Name}, len(group.UserCount()))
 ```
+
+## License
+
+This software is licensed under [the Apache 2.0 license](LICENSE).
